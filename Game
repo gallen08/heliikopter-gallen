@@ -1,0 +1,122 @@
+pygame import *
+from random import randint
+
+win_width = 500
+win_height = 600
+display.set_caption("Avoid The Block")
+window = display.set_mode((win_width, win_height))
+
+font.init()
+font_big = font.SysFont("Arial", 72)
+font_small = font.SysFont("Arial", 32)
+
+text_win = font_big.render("YOU WIN!", True, (255, 255, 255))
+text_lose = font_big.render("YOU LOSE!", True, (255, 80, 80))
+
+img_back   = "space.jpg"
+img_player = "player.png"
+img_block  = "block.png"
+
+score = 0
+goal = 15
+lost = 0
+max_lost = 5
+
+class GameSprite(sprite.Sprite):
+    def __init__(self, img, x, y, w, h, speed):
+        sprite.Sprite.__init__(self)
+
+        try:
+            self.image = transform.scale(image.load(img), (w, h))
+        except:
+            print(f"[WARNING] Gambar '{img}' tidak ditemukan → diganti warna!")
+            self.image = Surface((w, h))
+            self.image.fill((200, 50, 50))
+
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.speed = speed
+    
+    def reset(self):
+        window.blit(self.image, (self.rect.x, self.rect.y))
+
+class Player(GameSprite):
+    def update(self):
+        keys = key.get_pressed()
+        if keys[K_LEFT] and self.rect.x > 5:
+            self.rect.x -= self.speed
+        if keys[K_RIGHT] and self.rect.x < win_width - self.rect.width - 5:
+            self.rect.x += self.speed
+
+class Block(GameSprite):
+    def update(self):
+        global lost
+        self.rect.y += self.speed
+
+        if self.rect.y > win_height:
+            self.rect.x = randint(20, win_width - 60)
+            self.rect.y = -60
+            lost += 1
+
+try:
+    background = transform.scale(image.load(img_back), (win_width, win_height))
+except:
+    print(f"[WARNING] Background '{img_back}' tidak ditemukan → pakai warna.")
+    background = Surface((win_width, win_height))
+    background.fill((20, 20, 40))
+
+player = Player(img_player, win_width//2 - 40, win_height - 120, 80, 80, 8)
+
+blocks = sprite.Group()
+for i in range(5):
+    block = Block(img_block, randint(20, win_width - 60), -randint(100, 600), 60, 60, randint(3, 7))
+    blocks.add(block)
+
+clock = time.Clock()
+finish = False
+run = True
+
+while run:
+    for e in event.get():
+        if e.type == QUIT:
+            run = False
+
+    if not finish:
+        window.blit(background, (0, 0))
+
+        txt_score = font_small.render("Score: " + str(score), True, (255, 255, 255))
+        txt_lost  = font_small.render("Missed: " + str(lost), True, (255, 255, 255))
+        window.blit(txt_score, (10, 10))
+        window.blit(txt_lost,  (10, 40))
+
+        player.update()
+        blocks.update()
+
+        player.reset()
+        blocks.draw(window)
+
+        if sprite.spritecollide(player, blocks, False):
+            finish = True
+            window.blit(text_lose, (90, 260))
+
+        for b in blocks:
+            if b.rect.y == 0:
+                score += 1
+
+        if score >= goal:
+            finish = True
+            window.blit(text_win, (160, 260))
+
+    else:
+        time.delay(2000)
+        finish = False
+        score = 0
+        lost = 0
+        
+        for b in blocks:
+            b.rect.y = -randint(100, 600)
+            b.rect.x = randint(20, win_width - 60)
+
+    display.update()
+    clock.tick(60)
